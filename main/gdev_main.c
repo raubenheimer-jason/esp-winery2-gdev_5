@@ -6,28 +6,28 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
-#include <stdio.h>
+// #include <stdio.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_netif.h"
-#include "esp_eth.h"
-#include "esp_event.h"
+// #include "freertos/task.h"
+// #include "esp_netif.h"
+// #include "esp_eth.h"
+// #include "esp_event.h"
 #include "esp_log.h"
-#include "driver/gpio.h"
-#include "sdkconfig.h"
+// #include "driver/gpio.h"
+// #include "sdkconfig.h"
 
 // mqtt
-#include <stdint.h>
-#include <stddef.h>
-#include "esp_system.h"
+// #include <stdint.h>
+// #include <stddef.h>
+// #include "esp_system.h"
 #include "nvs_flash.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
-#include "mqtt_client.h"
+// #include "freertos/semphr.h"
+// #include "freertos/queue.h"
+// #include "lwip/sockets.h"
+// #include "lwip/dns.h"
+// #include "lwip/netdb.h"
+// #include "mqtt_client.h"
 // end mqtt
 
 // espnow
@@ -45,37 +45,39 @@ static xQueueHandle gateway_queue;
 
 static void example_espnow_deinit(void);
 
+void print_msg(example_espnow_event_recv_cb_t *recv_cb);
+
 // end espnow
 
-static const char *TAG = "eth_example";
+static const char *TAG = "gateway_dev";
 
 // mqtt
 // use IP address from "IOTstack_Net" network. Log into portainer (port 9000) and scroll
 // to the bottom of Mosquitto container. Choose "IP Address"
 // #define CONFIG_BROKER_URL "192.168.1.145"
-#define CONFIG_BROKER_URL "192.168.1.106"
+// #define CONFIG_BROKER_URL "192.168.1.106"
 
 /**
  * Send espnow data over mqtt
  * sends complete raw data (up to 250 bytes)
  * (maybe include other data as well?...)
  */
-int send_espnow_data(esp_mqtt_client_handle_t client, char *data, int data_len)
-{
-    int msg_id = esp_mqtt_client_publish(client, "/topic/espnow_data", data, data_len, 1, 0);
-    // ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-    return msg_id;
-}
+// int send_espnow_data(esp_mqtt_client_handle_t client, char *data, int data_len)
+// {
+//     int msg_id = esp_mqtt_client_publish(client, "/topic/espnow_data", data, data_len, 1, 0);
+//     // ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+//     return msg_id;
+// }
 
-int send_data(esp_mqtt_client_handle_t client, int count)
-{
-    char scnt[10];
-    sprintf(scnt, "%d", count);
+// int send_data(esp_mqtt_client_handle_t client, int count)
+// {
+//     char scnt[10];
+//     sprintf(scnt, "%d", count);
 
-    int msg_id = esp_mqtt_client_publish(client, "/topic/qos0", scnt, 0, 1, 0);
-    ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-    return msg_id;
-}
+//     int msg_id = esp_mqtt_client_publish(client, "/topic/qos0", scnt, 0, 1, 0);
+//     ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+//     return msg_id;
+// }
 
 /*
  * @brief Event handler registered to receive MQTT events
@@ -87,75 +89,169 @@ int send_data(esp_mqtt_client_handle_t client, int count)
  * @param event_id The id for the received event.
  * @param event_data The data for the event, esp_mqtt_event_handle_t.
  */
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+// static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+// {
+//     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
+//     esp_mqtt_event_handle_t event = event_data;
+//     esp_mqtt_client_handle_t client = event->client;
+//     int msg_id;
+//     switch ((esp_mqtt_event_id_t)event_id)
+//     {
+//     case MQTT_EVENT_CONNECTED:
+//         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+//         msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
+//         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+
+//         msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+//         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+//         msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
+//         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+//         msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
+//         ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+//         break;
+//     case MQTT_EVENT_DISCONNECTED:
+//         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+//         break;
+//     case MQTT_EVENT_SUBSCRIBED:
+//         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+//         msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
+//         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+//         break;
+//     case MQTT_EVENT_UNSUBSCRIBED:
+//         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
+//         break;
+//     case MQTT_EVENT_PUBLISHED:
+//         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+//         break;
+//     case MQTT_EVENT_DATA:
+//         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+//         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+//         printf("DATA=%.*s\r\n", event->data_len, event->data);
+//         break;
+//     case MQTT_EVENT_ERROR:
+//         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+//         break;
+//     default:
+//         ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+//         break;
+//     }
+// }
+
+void print_msg(example_espnow_event_recv_cb_t *recv_cb)
 {
-    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
-    esp_mqtt_event_handle_t event = event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    int msg_id;
-    switch ((esp_mqtt_event_id_t)event_id)
+    uint16_t data_len = recv_cb->data_len;
+
+    example_espnow_data_t *buf = (example_espnow_data_t *)recv_cb->data;
+
+    uint8_t *payload = (uint8_t *)malloc(data_len + 12); // add 12 bytes for 2x MAC addresses (batt_dev & g_dev)
+
+    //AND add 1 byte for \0 (null char)
+
+    memcpy(payload, buf->payload, data_len);
+
+    // temp
+    uint32_t temp = 0;
+    for (int i = 0; i < 4; i++)
     {
-    case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+        temp += payload[i] << (i * 8);
+    }
+    ESP_LOGI(TAG, "temp: %.4f", (float)(temp / 16.0));
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+    // program time
+    uint32_t ptime_ms = 0;
+    for (int i = 4; i < 8; i++)
+    {
+        ptime_ms += payload[i] << (i * 8);
+    }
+    ESP_LOGI(TAG, "ptime_ms: %d", ptime_ms);
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+    // bat voltage
+    uint32_t batmv = 0;
+    for (int i = 8; i < 12; i++)
+    {
+        batmv += payload[i] << (i * 8);
+    }
+    ESP_LOGI(TAG, "batmv: %d", batmv);
 
-        msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
-        break;
-    case MQTT_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-        break;
-    case MQTT_EVENT_SUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-        break;
-    case MQTT_EVENT_UNSUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
-        break;
-    case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
-        break;
-    default:
-        ESP_LOGI(TAG, "Other event id:%d", event->event_id);
-        break;
+    // add batt_dev MAC
+    for (int i = 0; i < 6; i++)
+    {
+        payload[data_len + i] = recv_cb->mac_addr[i];
+    }
+    data_len += 6;
+
+    unsigned char mac_base[6] = {0};
+    esp_efuse_mac_get_default(mac_base);
+    esp_read_mac(mac_base, ESP_MAC_ETH);
+
+    ESP_LOGI(TAG, "gateway device mac: " MACSTR, MAC2STR(mac_base));
+
+    // add g_dev MAC (this device)
+    for (int j = 0; j < 6; j++)
+    {
+        payload[data_len + j] = mac_base[j];
+    }
+    data_len += 6;
+
+    // payload[data_len] = '\0';
+    // data_len++;
+
+    //* Don't delete this, keep to print data if we need to
+    // for (uint32_t i = 0; i < data_len; i++)
+    // {
+    //     printf("payload[%d]: %d\n", i, payload[i]);
+    // }
+    // printf("data_len: %d\n", data_len);
+    //* ---------------------------------------------------
+
+    // send data over mqtt:
+    // send_espnow_data(client, (char *)payload, data_len);
+
+    // printf("payload:\n");
+    // printf("%s\n", payload);
+    // printf("\n");
+
+    printf("@");
+    for (uint32_t i = 0; i < data_len; i++)
+    {
+        printf("%d", payload[i]);
+    }
+    printf("\n");
+    // printf("nr_msg%s\n", payload);
+    // printf("M%.*s\n", (int)sizeof(payload), payload);
+    // printf("done\n");
+
+    // vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    // free(payload);
+
+    if (data_len < sizeof(example_espnow_data_t))
+    {
+        ESP_LOGE(TAG, "Receive ESPNOW data too short, len:%d", data_len);
     }
 }
 
-static void mqtt_app_start(void)
-{
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .host = CONFIG_BROKER_URL,
-        .port = 1883,
-        .transport = MQTT_TRANSPORT_OVER_TCP,
-        .protocol_ver = MQTT_PROTOCOL_V_3_1_1,
-    };
+// static void mqtt_app_start(void)
+// {
+//     esp_mqtt_client_config_t mqtt_cfg = {
+//         .host = CONFIG_BROKER_URL,
+//         .port = 1883,
+//         .transport = MQTT_TRANSPORT_OVER_TCP,
+//         .protocol_ver = MQTT_PROTOCOL_V_3_1_1,
+//     };
 
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(client);
+//     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+//     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
+//     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+//     esp_mqtt_client_start(client);
 
-    // if theres data in the queue (from espnow receive), send it over mqtt
-    // gateway_queue
+//     // if theres data in the queue (from espnow receive), send it over mqtt
+//     // gateway_queue
 
-    example_espnow_event_recv_cb_t *recv_cb;
-
+//     example_espnow_event_recv_cb_t *recv_cb;
+/*
     while (xQueueReceive(gateway_queue, &recv_cb, portMAX_DELAY) == pdTRUE)
     {
         uint16_t data_len = recv_cb->data_len;
@@ -210,13 +306,13 @@ static void mqtt_app_start(void)
         }
         data_len += 6;
 
-        //* Don't delete this, keep to print data if we need to
+        // Don't delete this, keep to print data if we need to
         // for (uint32_t i = 0; i < data_len; i++)
         // {
         //     printf("payload[%d]: %d\n", i, payload[i]);
         // }
         // printf("data_len: %d\n", data_len);
-        //* ---------------------------------------------------
+        // ---------------------------------------------------
 
         // send data over mqtt:
         send_espnow_data(client, (char *)payload, data_len);
@@ -228,7 +324,8 @@ static void mqtt_app_start(void)
             ESP_LOGE(TAG, "Receive ESPNOW data too short, len:%d", data_len);
         }
     }
-}
+    */
+// }
 
 // end mqtt
 
@@ -315,10 +412,13 @@ static void example_espnow_task(void *pvParameter)
                 // add data to queue to be sent over ethernet
                 // should probably only add data to queue if it isnt "Error data", but work out why it's saying it's error data in the future...
 
-                if (xQueueSend(gateway_queue, &recv_cb, portMAX_DELAY) != pdTRUE)
-                {
-                    ESP_LOGW(TAG, "Send gateway queue fail");
-                }
+                print_msg(recv_cb);
+                // printf("ok\n");
+
+                // if (xQueueSend(gateway_queue, &recv_cb, portMAX_DELAY) != pdTRUE)
+                // {
+                //     ESP_LOGW(TAG, "Send gateway queue fail");
+                // }
             }
             else if (ret == ESP_FAIL)
             {
@@ -376,56 +476,57 @@ static void example_espnow_deinit()
 
 // endespnow
 
-/** Event handler for Ethernet events */
-static void eth_event_handler(void *arg, esp_event_base_t event_base,
-                              int32_t event_id, void *event_data)
-{
-    uint8_t mac_addr[6] = {0};
-    /* we can get the ethernet driver handle from event data */
-    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
+// /** Event handler for Ethernet events */
+// static void eth_event_handler(void *arg, esp_event_base_t event_base,
+//                               int32_t event_id, void *event_data)
+// {
+//     uint8_t mac_addr[6] = {0};
+//     /* we can get the ethernet driver handle from event data */
+//     esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
 
-    switch (event_id)
-    {
-    case ETHERNET_EVENT_CONNECTED:
-        esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-        ESP_LOGI(TAG, "Ethernet Link Up");
-        ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
-                 mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-        break;
-    case ETHERNET_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "Ethernet Link Down");
-        break;
-    case ETHERNET_EVENT_START:
-        ESP_LOGI(TAG, "Ethernet Started");
-        break;
-    case ETHERNET_EVENT_STOP:
-        ESP_LOGI(TAG, "Ethernet Stopped");
-        break;
-    default:
-        break;
-    }
-}
+//     switch (event_id)
+//     {
+//     case ETHERNET_EVENT_CONNECTED:
+//         esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
+//         ESP_LOGI(TAG, "Ethernet Link Up");
+//         ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
+//                  mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+//         break;
+//     case ETHERNET_EVENT_DISCONNECTED:
+//         ESP_LOGI(TAG, "Ethernet Link Down");
+//         break;
+//     case ETHERNET_EVENT_START:
+//         ESP_LOGI(TAG, "Ethernet Started");
+//         break;
+//     case ETHERNET_EVENT_STOP:
+//         ESP_LOGI(TAG, "Ethernet Stopped");
+//         break;
+//     default:
+//         break;
+//     }
+// }
 
-/** Event handler for IP_EVENT_ETH_GOT_IP */
-static void got_ip_event_handler(void *arg, esp_event_base_t event_base,
-                                 int32_t event_id, void *event_data)
-{
-    ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-    const esp_netif_ip_info_t *ip_info = &event->ip_info;
+// /** Event handler for IP_EVENT_ETH_GOT_IP */
+// static void got_ip_event_handler(void *arg, esp_event_base_t event_base,
+//                                  int32_t event_id, void *event_data)
+// {
+//     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+//     const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-    ESP_LOGI(TAG, "Ethernet Got IP Address");
-    ESP_LOGI(TAG, "~~~~~~~~~~~");
-    ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&ip_info->ip));
-    ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&ip_info->netmask));
-    ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&ip_info->gw));
-    ESP_LOGI(TAG, "~~~~~~~~~~~");
+//     ESP_LOGI(TAG, "Ethernet Got IP Address");
+//     ESP_LOGI(TAG, "~~~~~~~~~~~");
+//     ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&ip_info->ip));
+//     ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&ip_info->netmask));
+//     ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&ip_info->gw));
+//     ESP_LOGI(TAG, "~~~~~~~~~~~");
 
-    mqtt_app_start();
-}
+//     mqtt_app_start();
+// }
 
-#define PIN_PHY_POWER 12
+// #define PIN_PHY_POWER 12
 void app_main(void)
 {
+    /*
     // Initialize TCP/IP network interface (should be called only once in application)
     ESP_ERROR_CHECK(esp_netif_init());
     // Create default event loop that running in background
@@ -478,7 +579,9 @@ void app_main(void)
         .spics_io_num = CONFIG_EXAMPLE_DM9051_CS_GPIO,
         .queue_size = 20};
     ESP_ERROR_CHECK(spi_bus_add_device(CONFIG_EXAMPLE_DM9051_SPI_HOST, &devcfg, &spi_handle));
+    */
     /* dm9051 ethernet driver is based on spi driver */
+    /*
     eth_dm9051_config_t dm9051_config = ETH_DM9051_DEFAULT_CONFIG(spi_handle);
     dm9051_config.int_gpio_num = CONFIG_EXAMPLE_DM9051_INT_GPIO;
     esp_eth_mac_t *mac = esp_eth_mac_new_dm9051(&dm9051_config, &mac_config);
@@ -497,7 +600,7 @@ void app_main(void)
     esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
-
+*/
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -509,13 +612,13 @@ void app_main(void)
 
     // mqtt end
 
-    esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_eth_handle_t eth_handle = NULL;
-    ESP_ERROR_CHECK(esp_eth_driver_install(&config, &eth_handle));
+    // esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
+    // esp_eth_handle_t eth_handle = NULL;
+    // ESP_ERROR_CHECK(esp_eth_driver_install(&config, &eth_handle));
     /* attach Ethernet driver to TCP/IP stack */
-    ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(eth_handle)));
+    // ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(eth_handle)));
     /* start Ethernet driver state machine */
-    ESP_ERROR_CHECK(esp_eth_start(eth_handle));
+    // ESP_ERROR_CHECK(esp_eth_start(eth_handle));
 
     example_wifi_init();
     example_espnow_init();
