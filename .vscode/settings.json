@@ -1,0 +1,27 @@
+{
+    "idf.portWin": "COM7",
+    "idf.adapterTargetName": "esp32",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "stdint.h": "c",
+        "freertos.h": "c",
+        "esp_event.h": "c",
+        "esp_netif.h": "c",
+        "esp_system.h": "c",
+        "esp_now.h": "c",
+        "gpio.h": "c",
+        "algorithm": "c",
+        "chrono": "c",
+        "iterator": "c",
+        "xhash": "c",
+        "xtree": "c",
+        "xutility": "c",
+        "espnow_gdev.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "esp_wifi.h": "c",
+        "string.h": "c",
+        "esp_wifi_types.h": "c"
+    }
+}
