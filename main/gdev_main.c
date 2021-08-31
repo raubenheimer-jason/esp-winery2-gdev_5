@@ -213,10 +213,10 @@ void print_msg(example_espnow_event_recv_cb_t *recv_cb)
     // printf("%s\n", payload);
     // printf("\n");
 
-    printf("@");
+    // printf("@");
     for (uint32_t i = 0; i < data_len; i++)
     {
-        printf("%d", payload[i]);
+        printf("@%d.", payload[i]);
     }
     printf("\n");
     // printf("nr_msg%s\n", payload);
