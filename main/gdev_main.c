@@ -10,6 +10,8 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "driver/uart.h"
+#include "driver/gpio.h"
 
 // espnow
 #include <stdlib.h>
@@ -27,6 +29,8 @@ static xQueueHandle gateway_queue;
 static void example_espnow_deinit(void);
 
 void print_msg(example_espnow_event_recv_cb_t *recv_cb);
+
+const uart_port_t uart_num = UART_NUM_2;
 
 // end espnow
 
@@ -94,11 +98,28 @@ void print_msg(example_espnow_event_recv_cb_t *recv_cb)
     // printf("data_len: %d\n", data_len);
     //* ---------------------------------------------------
 
+    // // Write data to UART.
+    // char *test_str = "This is a test string.\n";
+    // uart_write_bytes(uart_num, (const char *)payload, strlen((const char *)payload));
+    // uart_write_bytes(uart_num, "\n", 1);
+
+    // printf("%s\n", (const char *)payload);
+
     for (uint32_t i = 0; i < data_len; i++)
     {
         printf("@%d.", payload[i]);
+
+        char buf[6];
+        snprintf(buf, 6, "@%d.", payload[i]);
+
+        // uart_write_bytes(uart_num, "@", 1);
+        uart_write_bytes(uart_num, buf, strlen(buf));
+        // uart_write_bytes(uart_num, ".", 1);
     }
     printf("\n");
+    uart_write_bytes(uart_num, "\n", 1);
+
+    // vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     free(payload);
 
@@ -192,6 +213,10 @@ static void example_espnow_task(void *pvParameter)
                 // should probably only add data to queue if it isnt "Error data", but work out why it's saying it's error data in the future...
 
                 print_msg(recv_cb);
+
+                // delay for 110 ms (there is a timeout of 0.1 s in Node-RED for the join function from the serial input)
+                // this limits how many messages can be sent but it shouldn't have any effect...
+                vTaskDelay(110 / portTICK_PERIOD_MS);
             }
             else if (ret == ESP_FAIL)
             {
@@ -259,6 +284,41 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    // const uart_port_t uart_num = UART_NUM_2;
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        // .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        // .rx_flow_ctrl_thresh = 122,
+    };
+    // Configure UART parameters
+    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
+
+    gpio_num_t TX_pin = GPIO_NUM_17;
+    gpio_num_t RX_pin = GPIO_NUM_16;
+
+    // Set UART pins(TX: IO4, RX: IO5, RTS: IO18, CTS: IO19)
+    // ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, 4, 5, 18, 19));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TX_pin, RX_pin, NULL, NULL));
+
+    // Setup UART buffered IO with event queue
+    const int uart_buffer_size = (1024 * 2);
+    QueueHandle_t uart_queue;
+    // Install UART driver using an event queue here
+    // ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, uart_buffer_size, uart_buffer_size, 10, &uart_queue, 0));
+    ESP_ERROR_CHECK(uart_driver_install(uart_num, uart_buffer_size, uart_buffer_size, 10, &uart_queue, 0));
+
+    // // Write data to UART.
+    // char *test_str = "This is a test string.\n";
+    // uart_write_bytes(uart_num, (const char *)test_str, strlen(test_str));
+
+    // Wait for packet to be sent
+    // const uart_port_t uart_num = UART_NUM_2;
+    ESP_ERROR_CHECK(uart_wait_tx_done(uart_num, 100)); // wait timeout is 100 RTOS ticks (TickType_t)
 
     example_wifi_init();
     example_espnow_init();
