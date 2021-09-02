@@ -227,6 +227,8 @@ static void example_espnow_task(void *pvParameter)
                 ESP_LOGE(TAG, "shouldn't get to this...");
             }
 
+            free(recv_cb->data);
+
             break;
         }
         default:
@@ -303,7 +305,8 @@ void app_main(void)
 
     // Set UART pins(TX: IO4, RX: IO5, RTS: IO18, CTS: IO19)
     // ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, 4, 5, 18, 19));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TX_pin, RX_pin, NULL, NULL));
+    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TX_pin, RX_pin, NULL, NULL)); // UART_PIN_NO_CHANGE
 
     // Setup UART buffered IO with event queue
     const int uart_buffer_size = (1024 * 2);
